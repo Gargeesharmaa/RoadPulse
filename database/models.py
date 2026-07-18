@@ -8,7 +8,7 @@ from sqlalchemy import (
 )
 from datetime import datetime
 
-from db import Base
+from database.db import Base
 
 
 class Report(Base):
