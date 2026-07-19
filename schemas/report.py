@@ -28,6 +28,8 @@ class AIPredictionUpdate(BaseModel):
     incident_type : str
     severity: str
     confidence: float
+    summary: str
+    embedding: str
 
 
 class ReportResponse(BaseModel):
@@ -40,6 +42,8 @@ class ReportResponse(BaseModel):
     incident_type: str
     severity: str
     confidence: float
+    summary: str| None =None
+    embedding: str| None= None
 
     status: str
     description: Optional[str] = None
@@ -51,3 +55,7 @@ class ReportResponse(BaseModel):
 
     class Config:
         from_attribute =True
+
+class PipelineResponse(BaseModel):
+    duplicate: bool
+    report: ReportResponse
