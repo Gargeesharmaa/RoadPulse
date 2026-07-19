@@ -63,7 +63,9 @@ def update_ai_prediction(
     report_id: int,
     incident_type: str,
     severity: str,
-    confidence: float
+    confidence: float,
+    summary: str,
+    embedding: str
 ):
     report = db.query(Report).filter(Report.id == report_id).first()
 
@@ -71,7 +73,10 @@ def update_ai_prediction(
         report.incident_type = incident_type
         report.severity = severity
         report.confidence = confidence
+        report.summary = summary
+        report.embedding = embedding
 
+        
         db.commit()
         db.refresh(report)
 
