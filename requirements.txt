@@ -15,14 +15,12 @@ langchain
 langgraph
 langchain-google-genai
 langchain-community
-
-google-generativeai
+groq
 
 faiss-cpu
 sentence-transformers
 
 pillow
-opencv-python
 
 pandas
 numpy
