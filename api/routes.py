@@ -4,6 +4,13 @@ from sqlalchemy.orm import Session
 from database.db import get_db
 from database import crud
 from schemas.report import (ReportCreate, ReportResponse, DepartmentUpdate, AIPredictionUpdate, ReportUpdate)
+from service.gemini import analyze_image
+from fastapi import UploadFile, File, Form
+import os
+import uuid
+import shutil
+
+from service.pipeline import process_report
 
 router = APIRouter(
     prefix="/reports",
@@ -11,12 +18,44 @@ router = APIRouter(
 )
 
 # create a report
-@router.post("/", response_model=ReportResponse)
-def create_new_report(
-    report: ReportCreate,
+@router.post("/")
+async def create_new_report(
+    image: UploadFile = File(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    address: str = Form(...),
+    description: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    return crud.create_report(db, report.model_dump())
+
+    upload_dir = "static/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    extension = image.filename.split(".")[-1]
+
+    filename = f"{uuid.uuid4()}.{extension}"
+
+    image_path = os.path.join(
+        upload_dir,
+        filename
+    )
+
+    with open(image_path, "wb") as buffer:
+        shutil.copyfileobj(
+            image.file,
+            buffer
+        )
+
+    result = process_report(
+        db=db,
+        image_path=image_path,
+        latitude=latitude,
+        longitude=longitude,
+        address=address,
+        description=description
+    )
+
+    return result
 
 # get all reports
 @router.get("/",response_model=ReportResponse)
@@ -94,7 +133,9 @@ def update_prediction(
         report_id,
         prediction.incident_type,
         prediction.severity,
-        prediction.confidence
+        prediction.confidence,
+        prediction.summary,
+        prediction.embedding
     )
 
     if updated is None:
