@@ -29,6 +29,9 @@ class Report(Base):
     incident_type = Column(String, nullable=False)
     severity = Column(String, nullable=False)
     confidence = Column(Float, nullable=False)
+    Summary = Column(String, nullable=True)
+
+    embedding = Column(Text, nullable=True)
 
     # User Input
     description = Column(Text, nullable=True)
