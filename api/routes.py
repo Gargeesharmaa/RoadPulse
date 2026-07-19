@@ -1,21 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
+from typing import List
 
 from database.db import get_db
 from database import crud
 from schemas.report import (ReportCreate, ReportResponse, DepartmentUpdate, AIPredictionUpdate, ReportUpdate)
-from service.gemini import analyze_image
+from service.groq import analyze_image
 from fastapi import UploadFile, File, Form
 import os
 import uuid
 import shutil
-
+from database.db import get_db
 from service.pipeline import process_report
 
 router = APIRouter(
     prefix="/reports",
     tags=['RoadPulse Report']
 )
+
 
 # create a report
 @router.post("/")
@@ -27,25 +29,36 @@ async def create_new_report(
     description: str = Form(...),
     db: Session = Depends(get_db)
 ):
-
     upload_dir = "static/uploads"
     os.makedirs(upload_dir, exist_ok=True)
 
-    extension = image.filename.split(".")[-1]
+    # 🌟 CRITICAL FIX 1: Ensure safe file extension extraction
+    # Fallback to 'jpeg' if the uploaded filename has no proper extension split
+    filename_parts = image.filename.split(".")
+    extension = filename_parts[-1].lower() if len(filename_parts) > 1 else "jpeg"
+    
+    # Just in case it's an atypical extension format from streamlit
+    if extension not in ["jpg", "jpeg", "png"]:
+        extension = "jpeg"
 
     filename = f"{uuid.uuid4()}.{extension}"
+    image_path = os.path.join(upload_dir, filename)
 
-    image_path = os.path.join(
-        upload_dir,
-        filename
-    )
+    await image.seek(0)
 
+    # Read the full file contents asynchronously to prevent empty/corrupted files
+    contents = await image.read()
+    
+    # Write the complete byte stream to disk safely
     with open(image_path, "wb") as buffer:
-        shutil.copyfileobj(
-            image.file,
-            buffer
-        )
+        buffer.write(contents)
+    file_size = os.path.getsize(image_path)
+    print(f"=== DIAGNOSTIC: Saved image size: {file_size} bytes ===")
+    print(f"=== DIAGNOSTIC: First 20 bytes: {contents[:20]} ===")
+    # Close the internal spooled file to clean up resources
+    await image.close()
 
+    # Pass the fully written image path to your processing pipeline
     result = process_report(
         db=db,
         image_path=image_path,
@@ -55,10 +68,35 @@ async def create_new_report(
         description=description
     )
 
-    return result
+    # ... (Keep your existing code above this line) ...
+
+    # Pass the fully written image path to your processing pipeline
+    result = process_report(
+        db=db,
+        image_path=image_path,
+        latitude=latitude,
+        longitude=longitude,
+        address=address,
+        description=description
+    )
+
+    # 🌟 NEW FIX: Safely convert the output to plain JSON format
+    if isinstance(result, dict):
+        return result
+    
+    # If the pipeline returned a database model object, extract its fields
+    if hasattr(result, "__dict__"):
+        # If your SQLAlchemy model has a helper method like .to_dict() or .json(), use that:
+        if hasattr(result, "to_dict"):
+            return result.to_dict()
+        return {key: value for key, value in vars(result).items() if not key.startswith('_')}
+
+    # Fallback to prevent any crash
+    return {"status": "success", "data": str(result)}
+
 
 # get all reports
-@router.get("/",response_model=ReportResponse)
+@router.get("/",response_model=List[ReportResponse])
 def get_reports(
     db: Session = Depends(get_db)
 ):

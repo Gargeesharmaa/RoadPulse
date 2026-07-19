@@ -7,7 +7,8 @@ from api.routes import router
 app = FastAPI(
     title="RoadPulse API",
     description="AI-powered Traffic & Road Infrastructure Intelligence System",
-    version="1.0.0"
+    version="1.0.0",
+    debug=True
 )
 
 # Enable CORS

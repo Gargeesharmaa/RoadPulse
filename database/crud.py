@@ -1,15 +1,26 @@
 from sqlalchemy.orm import Session
-from database.models import Report
+from .models import Report
 
 
 # Create a new report
 def create_report(db: Session, report_data: dict):
-    report = Report(**report_data)
+    # Get all valid column names from your Report database model
+    valid_columns = {c.key for c in Report.__table__.columns}
+    
+    # If your database uses 'description' instead of 'summary', we can map it:
+    if 'summary' in report_data and 'description' in valid_columns and not report_data.get('description'):
+        report_data['description'] = report_data.pop('summary')
+        
+    # Filter out any extra keys (like 'summary' or anything else the AI added)
+    filtered_data = {k: v for k, v in report_data.items() if k in valid_columns}
+    
+    # Create the instance safely
+    report = Report(**filtered_data)
+    
     db.add(report)
     db.commit()
     db.refresh(report)
     return report
-
 
 # Get all reports
 def get_all_reports(db: Session):

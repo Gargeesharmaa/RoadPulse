@@ -44,6 +44,7 @@ class ReportResponse(BaseModel):
     confidence: float
     summary: str| None =None
     embedding: str| None= None
+    department: Optional[str] = None
 
     status: str
     description: Optional[str] = None
@@ -54,7 +55,7 @@ class ReportResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        from_attribute =True
+        from_attributes =True
 
 class PipelineResponse(BaseModel):
     duplicate: bool
