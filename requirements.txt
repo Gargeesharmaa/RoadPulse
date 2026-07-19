@@ -17,6 +17,7 @@ langchain-google-genai
 langchain-community
 
 google-generativeai
+groq
 
 faiss-cpu
 sentence-transformers
